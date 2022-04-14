@@ -34,7 +34,7 @@ class IncrementalCostConsensusInstance:
         self.rounds_to_convergence = 0
 
     def execute_instance(self):
-        epsilon = -0.02
+        epsilon = -0.01
         while not self.is_stopping_condition_satisfied():
             self.rounds_to_convergence += 1
             self.incremental_cost = np.add(np.dot(self.edge_weights, self.incremental_cost),
@@ -49,7 +49,7 @@ class IncrementalCostConsensusInstance:
             )
             # self.values_by_round.append(self.incremental_cost)
 
-    def is_stopping_condition_satisfied(self, epsilon=0.1):
+    def is_stopping_condition_satisfied(self, epsilon=0.05):
         max_value = np.max(self.incremental_cost)
         min_value = np.min(self.incremental_cost)
         value_mismatch = abs(max_value - min_value)
@@ -163,13 +163,15 @@ class IncrementalCostConsensusInstance:
 
 
 if __name__ == '__main__':
-    avg_consensus_instance = IncrementalCostConsensusInstance(50, TopologyLayout.LATTICE_RING,
-                                                              EdgeWeightType.OPTIMAL_CONSTANT)
+    # avg_consensus_instance = IncrementalCostConsensusInstance(50, TopologyLayout.WATTS_STROGATZ,
+    # EdgeWeightType.OPTIMAL_CONSTANT)
+    avg_consensus_instance = IncrementalCostConsensusInstance(1000, TopologyLayout.LATTICE_RING,
+                                                              EdgeWeightType.MEAN_METROPOLIS)
     setup_success = avg_consensus_instance.init_starting_values_randomized()
     if setup_success == 1:
         avg_consensus_instance.execute_instance()
-        print(avg_consensus_instance.incremental_cost)
-        print(avg_consensus_instance.estimated_mismatch)
-        print(avg_consensus_instance.actual_power)
+        # print(avg_consensus_instance.incremental_cost)
+        # print(avg_consensus_instance.estimated_mismatch)
+        # print(avg_consensus_instance.actual_power)
     else:
         print("setup failed")
