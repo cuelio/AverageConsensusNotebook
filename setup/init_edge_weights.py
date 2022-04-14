@@ -1,4 +1,18 @@
 import numpy as np
+from shared_types.types import EdgeWeightType
+
+
+def get_edge_weights(edge_wt_type, laplacian, n):
+    if edge_wt_type == EdgeWeightType.OPTIMAL_CONSTANT:
+        return optimal_constant(laplacian, n)
+    elif edge_wt_type == EdgeWeightType.MEAN_METROPOLIS:
+        return mean_metropolis(laplacian, n)
+    elif edge_wt_type == EdgeWeightType.LOCAL_DEGREE:
+        return local_degree(laplacian, n)
+    elif edge_wt_type == EdgeWeightType.MAX_DEGREE:
+        return max_degree(laplacian, n)
+    else:
+        print("Unsupported edge weight type: " + str(edge_wt_type))
 
 
 def optimal_constant(laplacian, n):

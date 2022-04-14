@@ -1,5 +1,15 @@
 import numpy as np
 import random
+from shared_types.types import InitialValueSetup
+
+
+def get_values(value_setup_type, n, first_value=0, second_value=1):
+    if value_setup_type == InitialValueSetup.GROUPED:
+        return grouped(n, first_value, second_value)
+    elif value_setup_type == InitialValueSetup.ALTERNATED:
+        return alternated(n, first_value, second_value)
+    else:
+        print("Unsupported value setup type: " + str(value_setup_type))
 
 
 def alternated(n, value1, value2):

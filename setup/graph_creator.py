@@ -1,5 +1,19 @@
 import numpy as np
 import random
+from shared_types.types import TopologyLayout
+
+
+def get_graph(graph_type, n, k=4):
+    if graph_type == TopologyLayout.RING:
+        return get_ring(n)
+    elif graph_type == TopologyLayout.LATTICE_RING:
+        return get_lattice_ring(n, k)
+    elif graph_type == TopologyLayout.K_REGULAR_EVEN_SPACED:
+        return get_k_regular_ring_evenly_spaced(n, k)
+    elif graph_type == TopologyLayout.WATTS_STROGATZ:
+        return get_watts_strogatz(n, k)
+    else:
+        print("Unsupported topology passed as input: " + str(graph_type))
 
 
 def get_ring(n):
