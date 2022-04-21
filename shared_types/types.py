@@ -11,6 +11,7 @@ class EdgeWeightType(Enum):
 class InitialValueSetup(Enum):
     ALTERNATED = "ALTERNATED"
     GROUPED = "GROUPED"
+    RANDOM = "RANDOM"
 
 
 class TopologyLayout(Enum):
