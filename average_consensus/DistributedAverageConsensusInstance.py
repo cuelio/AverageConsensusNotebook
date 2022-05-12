@@ -14,27 +14,13 @@ def run_instance(instance_size):
     instance.execute_instance()
 
 
-def run_ac_batch(instance_sizes, initial_value_type, topology, num_neighbors):
-    rounds_to_convergence = []
-    # print("Running experiment for " + str(instance_sizes) + " nodes")
-    for instance_size in instance_sizes:
-        if instance_size % 50 == 0:
-            print("Running experiment for " + str(instance_size) + " nodes")
-
-        instance = DistributedAverageConsensusInstance(instance_size, initial_value_type, num_neighbors, topology)
-        instance.execute_instance()
-        rounds_to_convergence.append(instance.rounds_to_convergence)
-
-    return rounds_to_convergence
-
-
 class DistributedAverageConsensusInstance:
-    def __init__(self, num_nodes, initial_value_type, topology, num_neighbors=4,
+    def __init__(self, num_nodes, initial_value_type, topology, max_offset=2,
                  edge_weight_type=EdgeWeightType.MEAN_METROPOLIS):
         # Input Data
         self.num_nodes = num_nodes
         self.values = init_starting_values.get_values(initial_value_type, self.num_nodes)
-        self.laplacian = graph_creator.get_graph(topology, self.num_nodes, num_neighbors)
+        self.laplacian = graph_creator.get_graph(topology, self.num_nodes, max_offset)
         self.edge_weights = init_edge_weights.get_edge_weights(edge_weight_type, self.laplacian, self.num_nodes)
 
         # Result Data
@@ -50,7 +36,7 @@ class DistributedAverageConsensusInstance:
 
         self.rounds_to_convergence = rounds
 
-    def is_stopping_condition_satisfied(self, epsilon=0.01):
+    def is_stopping_condition_satisfied(self, epsilon=0.1):
         max_value = np.max(self.values)
         min_value = np.min(self.values)
         diff = abs(max_value - min_value)

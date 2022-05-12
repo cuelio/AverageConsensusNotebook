@@ -1,16 +1,24 @@
-# This is a sample Python script.
+import time
 
-# Press ⌃R to execute it or replace it with your code.
-# Press Double ⇧ to search everywhere for classes, files, tool windows, actions, and settings.
-
-
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press ⌘F8 to toggle the breakpoint.
+from shared_types.types import InitialValueSetup, TopologyLayout
+from average_consensus.batch_run import run_icc_batch, run_ac_batch, run_ac_and_icc_batches, run_icc_instance
+import numpy as np
 
 
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-    print_hi('PyCharm')
+def main():
+    probabilities = np.arange(0.05, 0.06, 0.01)
+    rounds_to_convergence = []
 
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+    instance_size = 10
+    offset = 1
+
+    for probability in probabilities:
+        print("Probability: " + str(probability))
+        avg_rounds_to_converge = run_icc_instance(instance_size, TopologyLayout.LATTICE_RING, offset,
+                                                  ws_prob=probability, num_samples=1)
+        print(avg_rounds_to_converge)
+        rounds_to_convergence.append(avg_rounds_to_converge)
+
+
+if __name__ == "__main__":
+    main()

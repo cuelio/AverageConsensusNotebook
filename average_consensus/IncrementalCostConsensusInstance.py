@@ -1,5 +1,3 @@
-import multiprocessing
-
 import numpy as np
 import setup.graph_creator as graph_creator
 import setup.init_edge_weights as init_edge_weights
@@ -12,61 +10,18 @@ import random
 from shared_types.types import EdgeWeightType, TopologyLayout
 
 
-def run_instance(instance_size, topology):
-    instance = IncrementalCostConsensusInstance(instance_size, topology)
-    setup = instance.init_starting_values_randomized()
-    if not setup:
-        raise Exception("Unable to successfully create random starting values")
-    instance.execute_instance()
-
-
-# TODO: Try to parallelize this instead, not in jupyter
-def run_icc_batch_parallel():
-    p1_instance_sizes = list(range(50, 300, 20))
-    p2_instance_sizes = list(range(60, 300, 20))
-
-    p1 = multiprocessing.Process(target=run_icc_batch, args=(p1_instance_sizes, ))
-    p2 = multiprocessing.Process(target=run_icc_batch, args=(p2_instance_sizes, ))
-
-    # starting processes
-    p1.start()
-    p2.start()
-
-    # process IDs
-    print("ID of process p1: {}".format(p1.pid))
-    print("ID of process p2: {}".format(p2.pid))
-
-    # wait until processes are finished
-    p1.join()
-    p2.join()
-
-    # both processes finished
-    print("Both processes finished execution!")
-
-
-def run_icc_batch(instance_sizes, topology, num_neighbors):
-    rounds_to_convergence = []
-    for instance_size in instance_sizes:
-        if instance_size % 50 == 0:
-            print("Running experiment for " + str(instance_size) + " nodes")
-
-        instance = IncrementalCostConsensusInstance(instance_size, topology, num_neighbors)
-        setup_successful = instance.init_starting_values_randomized()
-        if not setup_successful:
-            raise Exception("Unable to successfully create random starting values")
-
-        instance.execute_instance()
-        rounds_to_convergence.append(instance.rounds_to_convergence)
-
-    return rounds_to_convergence
-
-
 class IncrementalCostConsensusInstance:
-    def __init__(self, num_nodes, topology, num_neighbors=4, edge_weight_type=EdgeWeightType.MEAN_METROPOLIS):
+    def __init__(self,
+                 num_nodes,
+                 topology,
+                 max_offset=2,
+                 edge_weight_type=EdgeWeightType.MEAN_METROPOLIS,
+                 rewire_probability=0.2):
+
         # Input Data
         self.num_nodes = num_nodes
         self.incremental_cost = np.zeros(num_nodes, dtype=float)
-        self.laplacian = graph_creator.get_graph(topology, self.num_nodes, num_neighbors)
+        self.laplacian = graph_creator.get_graph(topology, self.num_nodes, max_offset, rewire_probability)
         self.edge_weights = init_edge_weights.get_edge_weights(edge_weight_type, self.laplacian, self.num_nodes)
         self.estimated_mismatch = np.zeros(num_nodes, dtype=float)
         self.actual_power = np.zeros(num_nodes, dtype=float)
@@ -100,27 +55,30 @@ class IncrementalCostConsensusInstance:
             )
             # self.values_by_round.append(self.incremental_cost)
 
-    def is_stopping_condition_satisfied(self, epsilon=0.05):
-        max_value = np.max(self.incremental_cost)
-        min_value = np.min(self.incremental_cost)
+    def is_stopping_condition_satisfied(self, epsilon=0.1):
+        max_value = round(np.max(self.incremental_cost), 2)
+        min_value = round(np.min(self.incremental_cost), 2)
         value_mismatch = abs(max_value - min_value)
         # self.print_convergence_status(value_mismatch)
 
         if value_mismatch <= epsilon:
             # print("Reached convergence in " + str(self.rounds_to_convergence) + " rounds.")
+            # print("Eigenvalues: " + str(np.linalg.eigvals(self.laplacian)))
             return True
         else:
             return False
 
     def print_convergence_status(self, value_mismatch):
-        print_interval = 10
-        if self.rounds_to_convergence >= 1000:
-            print_interval = 100
-        if self.rounds_to_convergence >= 10000:
-            print_interval = 1000
+        # print_interval = 10
+        # if self.rounds_to_convergence >= 1000:
+        #     print_interval = 100
+        # if self.rounds_to_convergence >= 10000:
+        #     print_interval = 1000
 
-        if self.rounds_to_convergence % print_interval == 0:
+        if self.rounds_to_convergence >= 10000 and self.rounds_to_convergence % 10000 == 0:
             print("Min/max mismatch in round " + str(self.rounds_to_convergence) + ": " + str(value_mismatch))
+            print("Average cost: " + str(np.mean(self.incremental_cost)))
+            print("Eigenvalues: " + str(np.linalg.eigvals(self.laplacian)))
 
     def adjust_for_constraints(self):
         for i in range(0, self.num_nodes):
@@ -160,6 +118,11 @@ class IncrementalCostConsensusInstance:
         for i in range(0, self.num_nodes):
             self.actual_power[i] = self.p_min[i]
 
+            # diff = self.p_max[i] - self.p_min[i]
+            # self.actual_power[i] = round(diff * random.random() + self.p_min[i], 1)
+            # print("setup: ")
+            # print(self.p_min[i], self.p_max[i], self.actual_power[i])
+
     def init_incremental_cost(self):
         for i in range(0, self.num_nodes):
             self.incremental_cost[i] = self.a[i] * self.actual_power[i] + self.b[i]
@@ -192,16 +155,19 @@ class IncrementalCostConsensusInstance:
             self.p_min = np.zeros(self.num_nodes, dtype=int)
 
             for node_index in range(0, self.num_nodes):
-                self.a[node_index] = random.uniform(0.05, 0.08)
-                self.b[node_index] = random.uniform(3.0, 10.0)
-
                 is_generation = random.random() > 0.6
                 if is_generation:
-                    self.p_min[node_index] = random.randint(10, 21)
-                    self.p_max[node_index] = random.randint(self.p_min[node_index] + 25, self.p_min[node_index] + 46)
+                    self.a[node_index] = random.uniform(0.05, 0.08)
+                    self.b[node_index] = random.uniform(2.0, 5)
+
+                    self.p_min[node_index] = random.randint(10, 15)
+                    self.p_max[node_index] = random.randint(self.p_min[node_index] + 30, self.p_min[node_index] + 61)
                     min_gen += self.p_min[node_index]
                     max_gen += self.p_max[node_index]
                 else:
+                    self.a[node_index] = random.uniform(0.05, 0.08)
+                    self.b[node_index] = random.uniform(7.0, 9.0)
+
                     self.p_min[node_index] = random.randint(10, 21)
                     self.p_max[node_index] = random.randint(self.p_min[node_index] + 10, self.p_min[node_index] + 21)
 

@@ -65,8 +65,8 @@ def mean_metropolis(laplacian, n, delta=0.01):
         for j in range(0, n):
             if i == j:
                 continue
-            if laplacian[i][j] == -1:
-                weights[i][j] = 2 / (laplacian[i][i] + laplacian[j][j] + delta)
-                sum_of_weights += weights[i][j]
-        weights[i][i] = 1 - sum_of_weights
+            if laplacian[i, j] == -1:
+                weights[i, j] = 2 / (laplacian[i, i] + laplacian[j, j] + delta)
+                sum_of_weights += weights[i, j]
+        weights[i, i] = 1 - sum_of_weights
     return weights
