@@ -58,6 +58,7 @@ def run_icc_instance(instance_size, topology, num_neighbors=4, ws_prob=0.05, num
     for i in range(0, num_samples):
         instance = IncrementalCostConsensusInstance(instance_size, topology, num_neighbors, rewire_probability=ws_prob)
         setup_successful = instance.init_starting_values_randomized()
+        # instance.init_starting_values()
         if not setup_successful:
             raise Exception("Unable to successfully create random starting values")
 
@@ -65,5 +66,5 @@ def run_icc_instance(instance_size, topology, num_neighbors=4, ws_prob=0.05, num
         avg_rounds += instance.rounds_to_convergence
 
     avg_rounds = avg_rounds / num_samples
-    print("Took " + str(avg_rounds) + " rounds to converge for probability " + str(ws_prob))
+    print("Took " + str(avg_rounds) + " rounds to converge")
     return avg_rounds

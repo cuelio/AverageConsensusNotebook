@@ -3,11 +3,10 @@ import networkx as nx
 from shared_types.types import TopologyLayout
 
 
-def get_graph(graph_type, n, max_lattice_offset=1, rewire_probability=0.2):
-    if graph_type == TopologyLayout.RING:
-        graph = nx.circulant_graph(n, [1])
-        return convert_graph_to_laplacian(graph)
-    elif graph_type == TopologyLayout.LATTICE_RING:
+def get_graph(graph_type, n, max_lattice_offset=2, rewire_probability=0.2):
+    if graph_type == TopologyLayout.LATTICE_RING:
+        if max_lattice_offset < 2:
+            raise Exception("Minimum lattice offset is 2")
         offset = list(range(1, max_lattice_offset + 1))
         graph = nx.circulant_graph(n, offset)
         return convert_graph_to_laplacian(graph)

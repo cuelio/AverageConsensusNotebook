@@ -56,14 +56,17 @@ class IncrementalCostConsensusInstance:
             # self.values_by_round.append(self.incremental_cost)
 
     def is_stopping_condition_satisfied(self, epsilon=0.1):
-        max_value = round(np.max(self.incremental_cost), 2)
-        min_value = round(np.min(self.incremental_cost), 2)
-        value_mismatch = abs(max_value - min_value)
-        # self.print_convergence_status(value_mismatch)
+        max_power_mismatch = round(np.max(self.estimated_mismatch), 4)
+        min_power_mismatch = round(np.min(self.estimated_mismatch), 4)
+        # power_mismatch = abs(max_power_mismatch - min_power_mismatch)
+        # self.print_convergence_status(power_mismatch)
 
-        if value_mismatch <= epsilon:
+        max_value = round(np.max(self.incremental_cost), 4)
+        min_value = round(np.min(self.incremental_cost), 4)
+        value_mismatch = abs(max_value - min_value)
+
+        if abs(max_power_mismatch) < epsilon and abs(min_power_mismatch) < epsilon and value_mismatch < epsilon:
             # print("Reached convergence in " + str(self.rounds_to_convergence) + " rounds.")
-            # print("Eigenvalues: " + str(np.linalg.eigvals(self.laplacian)))
             return True
         else:
             return False
@@ -77,8 +80,10 @@ class IncrementalCostConsensusInstance:
 
         if self.rounds_to_convergence >= 10000 and self.rounds_to_convergence % 10000 == 0:
             print("Min/max mismatch in round " + str(self.rounds_to_convergence) + ": " + str(value_mismatch))
-            print("Average cost: " + str(np.mean(self.incremental_cost)))
-            print("Eigenvalues: " + str(np.linalg.eigvals(self.laplacian)))
+            print("estimated mismatch: " + str(np.mean(self.estimated_mismatch)))
+            # print("Average cost list: " + str(self.incremental_cost))
+            # print("power mismatch: " + str(self.estimated_mismatch))
+            # print("Eigenvalues: " + str(np.linalg.eigvals(self.laplacian)))
 
     def adjust_for_constraints(self):
         for i in range(0, self.num_nodes):
@@ -86,14 +91,6 @@ class IncrementalCostConsensusInstance:
                 self.adjust_for_load(i)
             elif self.p_max[i] > 0 and self.p_min[i] > 0:
                 self.adjust_for_generation(i)
-            elif self.p_max[i] > 0 and self.p_min[i] < 0:
-                self.adjust_for_battery(i)
-
-    def adjust_for_battery(self, i):
-        if self.actual_power[i] > self.p_max[i]:
-            self.actual_power[i] = self.p_max[i]
-        elif self.actual_power[i] < self.p_min[i]:
-            self.actual_power[i] = self.p_min[i]
 
     def adjust_for_generation(self, i):
         if self.actual_power[i] > self.p_max[i]:
@@ -176,7 +173,7 @@ class IncrementalCostConsensusInstance:
                     min_load += self.p_min[node_index]
                     max_load += self.p_max[node_index]
 
-            # print(min_load, max_load, min_gen, max_gen)
+            # print(min_gen, min_load, max_load, max_gen)
             if abs(min_gen) < abs(min_load) and abs(max_load) < abs(max_gen):
                 self.init_starting_values()
                 return 1
