@@ -3,20 +3,43 @@ import networkx as nx
 from shared_types.types import TopologyLayout
 
 
-def get_graph(graph_type, n, max_lattice_offset=2, rewire_probability=0.2):
-    if graph_type == TopologyLayout.LATTICE_RING:
-        if max_lattice_offset < 2:
-            raise Exception("Minimum lattice offset is 2")
-        offset = list(range(1, max_lattice_offset + 1))
-        graph = nx.circulant_graph(n, offset)
-        return convert_graph_to_laplacian(graph)
-    elif graph_type == TopologyLayout.K_REGULAR_EVEN_SPACED:
-        return get_k_regular_ring_evenly_spaced(n, max_lattice_offset)
-    elif graph_type == TopologyLayout.WATTS_STROGATZ:
-        graph = nx.connected_watts_strogatz_graph(n, max_lattice_offset, rewire_probability)
-        return convert_graph_to_laplacian(graph)
+# Round to next highest even number > 4
+def get_number_of_nbrs(n, nbr_ratio, min_nbrs=4):
+    num_nbrs = round(n * nbr_ratio)
+
+    if num_nbrs <= min_nbrs:
+        return min_nbrs
     else:
-        print("Unsupported topology passed as input: " + str(graph_type))
+        if num_nbrs % 2 == 0:
+            return num_nbrs
+        else:
+            return num_nbrs + 1
+
+
+def get_graph(graph_type, n, num_nbrs=4, ws_rewire_prob=0.5):
+    attempts = 0
+    is_connected = False
+    graph = None
+    while not is_connected:
+        attempts += 1
+        if attempts > 10:
+            raise Exception("Unable to generate a connected graph")
+
+        if graph_type == TopologyLayout.LATTICE_RING:
+            graph = nx.connected_watts_strogatz_graph(n, num_nbrs, 0.0)
+        elif graph_type == TopologyLayout.WATTS_STROGATZ:
+            graph = nx.connected_watts_strogatz_graph(n, num_nbrs, ws_rewire_prob)
+        elif graph_type == TopologyLayout.RANDOM_REGULAR:
+            graph = nx.random_regular_graph(num_nbrs, n)
+        elif graph_type == TopologyLayout.RANDOM_TREE:
+            graph = nx.random_tree(n)
+        elif graph_type == TopologyLayout.FULL_RARY_TREE:
+            graph = nx.full_rary_tree(num_nbrs, n)
+        else:
+            print("Unsupported topology passed as input: " + str(graph_type))
+
+        is_connected = nx.is_connected(graph)
+    return graph
 
 
 # TODO: Not sure if this is necessary or if it works well

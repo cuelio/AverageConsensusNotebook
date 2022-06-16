@@ -1,6 +1,11 @@
 from enum import Enum
 
 
+class ConsensusAlgorithm:
+    AC = "AVERAGE_CONSENSUS"
+    ICC = "INCREMENTAL_COST_CONSENSUS"
+
+
 class EdgeWeightType(Enum):
     OPTIMAL_CONSTANT = "OPTIMAL_CONSTANT"
     MAX_DEGREE = "MAX_DEGREE"
@@ -15,7 +20,10 @@ class InitialValueSetup(Enum):
 
 
 class TopologyLayout(Enum):
-    RING = "RING"
     LATTICE_RING = "LATTICE_RING"
-    K_REGULAR_EVEN_SPACED = "K_REGULAR_EVEN_SPACED"
     WATTS_STROGATZ = "WATTS_STROGATZ"
+    RANDOM_REGULAR = "RANDOM_REGULAR"
+    RANDOM_TREE = "RANDOM_TREE"
+    FULL_RARY_TREE = "FULL_RARY_TREE"
+    K_REGULAR_EVEN_SPACED = "K_REGULAR_EVEN_SPACED"
+

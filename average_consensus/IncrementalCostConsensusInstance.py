@@ -2,6 +2,7 @@ import numpy as np
 import setup.graph_creator as graph_creator
 import setup.init_edge_weights as init_edge_weights
 import random
+import math
 
 # a = [0.080, 0.062, 0.075, 0.072, 0.066, 0.070, 0.35, 0.075, 0.060, 0.078, 0.080, 0.085, 0.069, 0.077]
 # b = [2.25, 4.20, 3.25, 8.25, 7.20, 4.05, 0, 7.80, 8.05, 8.45, 8.75, 9.00, 7.05, 8.15]
@@ -14,37 +15,47 @@ class IncrementalCostConsensusInstance:
     def __init__(self,
                  num_nodes,
                  topology,
-                 max_offset=2,
+                 num_nbrs=4,
                  edge_weight_type=EdgeWeightType.MEAN_METROPOLIS,
-                 rewire_probability=0.2):
+                 ws_rewire_prob=0.5,
+                 step_size=0.0001):
 
         # Input Data
         self.num_nodes = num_nodes
+        self.epsilon = step_size * -1
         self.incremental_cost = np.zeros(num_nodes, dtype=float)
-        self.laplacian = graph_creator.get_graph(topology, self.num_nodes, max_offset, rewire_probability)
+        graph = graph_creator.get_graph(topology, self.num_nodes, num_nbrs, ws_rewire_prob)
+        self.laplacian = graph_creator.convert_graph_to_laplacian(graph)
         self.edge_weights = init_edge_weights.get_edge_weights(edge_weight_type, self.laplacian, self.num_nodes)
         self.estimated_mismatch = np.zeros(num_nodes, dtype=float)
         self.actual_power = np.zeros(num_nodes, dtype=float)
 
-        self.a = [0.080, 0.062, 0.075, 0.072, 0.066, 0.070, 0.35, 0.075, 0.060, 0.078, 0.080, 0.085, 0.069, 0.077]
-        self.b = [2.25, 4.20, 3.25, 8.25, 7.20, 4.05, 0, 7.80, 8.05, 8.45, 8.75, 9.00, 7.05, 8.15]
-        self.p_max = [60, 50, 55, -30, -20, 50, 25, -30, -35, -35, -40, -40, -15, -35]
-        self.p_min = [30, 20, 30, -10, -5, 20, -25, -10, -15, -15, -15, -15, -1, -10]
+        # Default test data from paper for 14 nodes
+        # self.a = [0.080, 0.062, 0.075, 0.072, 0.066, 0.070, 0.35, 0.075, 0.060, 0.078, 0.080, 0.085, 0.069, 0.077]
+        # self.b = [2.25, 4.20, 3.25, 8.25, 7.20, 4.05, 0, 7.80, 8.05, 8.45, 8.75, 9.00, 7.05, 8.15]
+        # self.p_max = [60, 50, 55, -30, -20, 50, 25, -30, -35, -35, -40, -40, -15, -35]
+        # self.p_min = [30, 20, 30, -10, -5, 20, -25, -10, -15, -15, -15, -15, -1, -10]
+
+        self.a = np.zeros(self.num_nodes, dtype=float)
+        self.b = np.zeros(self.num_nodes, dtype=float)
+        self.p_max = np.zeros(self.num_nodes, dtype=int)
+        self.p_min = np.zeros(self.num_nodes, dtype=int)
 
         # cost function
         self.b_matrix = np.zeros((num_nodes, num_nodes), dtype=float)
         self.g = np.zeros(num_nodes, dtype=float)
+
+        self.init_starting_values_randomized()
 
         # Result Data
         self.values_by_round = []
         self.rounds_to_convergence = 0
 
     def execute_instance(self):
-        epsilon = -0.01
         while not self.is_stopping_condition_satisfied():
             self.rounds_to_convergence += 1
             self.incremental_cost = np.add(np.dot(self.edge_weights, self.incremental_cost),
-                                           epsilon * self.estimated_mismatch)
+                                           self.epsilon * self.estimated_mismatch)
             prev_actual_power = self.actual_power
             self.actual_power = np.add(np.dot(self.b_matrix, self.incremental_cost), self.g)
             self.adjust_for_constraints()
@@ -53,23 +64,19 @@ class IncrementalCostConsensusInstance:
                 np.dot(self.edge_weights, self.estimated_mismatch),
                 np.dot(self.edge_weights, np.add(self.actual_power, -1 * prev_actual_power))
             )
-            # self.values_by_round.append(self.incremental_cost)
+            self.values_by_round.append(self.incremental_cost)
 
     def is_stopping_condition_satisfied(self, epsilon=0.1):
-        max_power_mismatch = round(np.max(self.estimated_mismatch), 4)
-        min_power_mismatch = round(np.min(self.estimated_mismatch), 4)
-        # power_mismatch = abs(max_power_mismatch - min_power_mismatch)
-        # self.print_convergence_status(power_mismatch)
-
-        max_value = round(np.max(self.incremental_cost), 4)
-        min_value = round(np.min(self.incremental_cost), 4)
-        value_mismatch = abs(max_value - min_value)
-
-        if abs(max_power_mismatch) < epsilon and abs(min_power_mismatch) < epsilon and value_mismatch < epsilon:
-            # print("Reached convergence in " + str(self.rounds_to_convergence) + " rounds.")
-            return True
-        else:
+        estimated_power_spread = round(np.max(self.estimated_mismatch) - np.min(self.estimated_mismatch), 4)
+        if not math.isclose(estimated_power_spread, 0, abs_tol=epsilon):
+            # Only need to check other stopping conditions if all nodes have a near-0 estimates of power mismatch
             return False
+
+        # Both should converge to 0
+        estimated_power_mismatch = round(np.average(self.estimated_mismatch), 4)
+        ic_spread = round(np.max(self.incremental_cost) - np.min(self.incremental_cost), 4)
+
+        return math.isclose(estimated_power_mismatch, 0, abs_tol=epsilon) and math.isclose(ic_spread, 0, abs_tol=epsilon)
 
     def print_convergence_status(self, value_mismatch):
         # print_interval = 10
@@ -146,14 +153,14 @@ class IncrementalCostConsensusInstance:
             attempt_number += 1
 
             min_load, max_load, min_gen, max_gen = 0, 0, 0, 0
-            self.a = np.zeros(self.num_nodes, dtype=float)
-            self.b = np.zeros(self.num_nodes, dtype=float)
-            self.p_max = np.zeros(self.num_nodes, dtype=int)
-            self.p_min = np.zeros(self.num_nodes, dtype=int)
 
+            generation_positions = []
             for node_index in range(0, self.num_nodes):
                 is_generation = random.random() > 0.6
-                if is_generation:
+                generation_positions.append(is_generation)
+
+            for node_index in range(0, self.num_nodes):
+                if generation_positions[node_index]:
                     self.a[node_index] = random.uniform(0.05, 0.08)
                     self.b[node_index] = random.uniform(2.0, 5)
 

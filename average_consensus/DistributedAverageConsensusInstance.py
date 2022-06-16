@@ -15,12 +15,13 @@ def run_instance(instance_size):
 
 
 class DistributedAverageConsensusInstance:
-    def __init__(self, num_nodes, initial_value_type, topology, max_offset=2,
-                 edge_weight_type=EdgeWeightType.MEAN_METROPOLIS):
+    def __init__(self, num_nodes, initial_value_type, topology, num_nbrs=4,
+                 edge_weight_type=EdgeWeightType.MEAN_METROPOLIS, ws_rewire_prob=0.5):
         # Input Data
         self.num_nodes = num_nodes
         self.values = init_starting_values.get_values(initial_value_type, self.num_nodes)
-        self.laplacian = graph_creator.get_graph(topology, self.num_nodes, max_offset)
+        graph = graph_creator.get_graph(topology, self.num_nodes, num_nbrs, ws_rewire_prob)
+        self.laplacian = graph_creator.convert_graph_to_laplacian(graph)
         self.edge_weights = init_edge_weights.get_edge_weights(edge_weight_type, self.laplacian, self.num_nodes)
 
         # Result Data
